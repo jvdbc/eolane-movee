@@ -4,13 +4,13 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "go build",
+            "label": "go install",
             "type": "shell",
-            "command": "go build",
+            "command": "go install ./...",
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            }  
         }
     ]
 }
