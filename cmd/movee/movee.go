@@ -7,6 +7,9 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/reactivex/rxgo/iterable"
+	"github.com/reactivex/rxgo/observable"
 )
 
 func main() {
@@ -32,35 +35,60 @@ func main() {
 		sep = "AA"
 	}
 
-	frames := strings.Split(args, sep)
+	frames, err := iterable.New(strings.Split(args, sep))
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	onFrame := func(item interface{}) interface{} {
+		if str, ok := item.(string); ok {
+			data, err := hex.DecodeString(str)
+			if err != nil {
+				return err
+			}
+			return data
+		}
+
+		return fmt.Errorf("Unable to get frame %s", item)
+	}
+
+	observable.
+		From(frames).
+		Map(onFrame)
+
+	// connectable.New()
+
+	// onError := handlers.ErrFunc(func(err error) {
+	// 	log.Printf("frame %d: %s is not valid: %s ", i, frame, err)
+	// })
+
+	// onHex := handlers.NextFunc(func(item interface{}) {
+	// 	data := item.([]byte)
+	// 	switch {
+
+	// 	}
+	// })
+
+	// popHex := func() interface{} {
+	// 	if data, err := hex.DecodeString(frame); err != nil {
+	// 		return err
+	// 	}
+	// 	return data
+	// }
+
+	// observer := observer.New(onFrame, onError)
+
+	// observable.Start(popHex).Subscribe()
+
+	// var data, err = hex.DecodeString(frame)
+
+}
+
+func oldMain(frames []string) {
 	for i, frame := range frames {
 		var data []byte
 		var err error
-
-		// onError := handlers.ErrFunc(func(err error) {
-		// 	log.Printf("frame %d: %s is not valid: %s ", i, frame, err)
-		// })
-
-		// onHex := handlers.NextFunc(func(item interface{}) {
-		// 	data := item.([]byte)
-		// 	switch {
-
-		// 	}
-		// })
-
-		// popHex := func() interface{} {
-		// 	if data, err := hex.DecodeString(frame); err != nil {
-		// 		return err
-		// 	}
-		// 	return data
-		// }
-
-		// observer := observer.New(onFrame, onError)
-
-		// observable.Start(popHex).Subscribe()
-
-		// var data, err = hex.DecodeString(frame)
 
 		if data, err = hex.DecodeString(frame); err != nil {
 			log.Printf("frame %d: %s is not valid !", i, frame)
@@ -73,6 +101,5 @@ func main() {
 		}
 
 		fmt.Printf("frame %d: %s \n", i, data)
-
 	}
 }
