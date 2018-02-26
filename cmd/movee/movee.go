@@ -8,91 +8,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jvdbc/eolane-movee"
+
 	"github.com/reactivex/rxgo/handlers"
 
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/observable"
 )
-
-// MoveeFrameType data type
-type MoveeFrameType byte
-
-const (
-	// Unknown Not a valid frame
-	Unknown MoveeFrameType = 0x00
-	// Alive frame
-	Alive MoveeFrameType = 0x01
-	// Temperature frame
-	Temperature MoveeFrameType = 0x02
-	// Shock frame
-	Shock MoveeFrameType = 0x04
-	// Tilt frame
-	Tilt MoveeFrameType = 0x08
-	// Orient frame
-	Orient MoveeFrameType = 0x10
-	// Motion frame
-	Motion MoveeFrameType = 0x20
-	// Activity frame
-	Activity MoveeFrameType = 0x40
-	// Rotation frame
-	Rotation MoveeFrameType = 0x80
-	// Vibration frame
-	Vibration MoveeFrameType = 0x86
-	// Information frame
-	Information MoveeFrameType = 0xFE
-	// Service frame
-	Service MoveeFrameType = 0xFF
-)
-
-// Payload type alias on slice of bytes
-type Payload []byte
-
-// MoveeFrame type
-type MoveeFrame struct {
-	BatteryLevel float32
-	Temperature  int8
-	Type         MoveeFrameType
-}
-
-func batteryLevel(b byte) float32 {
-	return ((3.6-2.8)/255.0)*float32(b) + 2.8
-}
-
-func temperature(b byte) int8 {
-	return int8(b)
-}
-
-func (f MoveeFrame) print() {
-	switch f.Type {
-	case Unknown:
-	case Alive:
-	case Temperature:
-	case Shock:
-	case Tilt:
-	case Orient:
-	case Motion:
-	case Activity:
-	case Rotation:
-	case Vibration:
-	case Information:
-	case Service:
-	}
-}
-
-// Parse read a slice of data to get the movee frame
-func (p Payload) Parse() (MoveeFrame, error) {
-	if p == nil {
-		return MoveeFrame{}, fmt.Errorf("The payload must not be nil")
-	}
-
-	if len(p) < 4 {
-		return MoveeFrame{}, fmt.Errorf("The payload must have at least 4 bytes: %x", p)
-	}
-
-	result := MoveeFrame{BatteryLevel: batteryLevel(p[0]), Temperature: temperature(p[1])}
-
-	return result, nil
-}
 
 func unravel(result interface{}, err error) interface{} {
 	if err != nil {
@@ -140,7 +62,7 @@ func main() {
 
 	onBytes := func(item interface{}) interface{} {
 		if data, ok := item.([]byte); ok {
-			payload := Payload(data)
+			payload := frame.Payload(data)
 
 			return unravel(payload.Parse())
 		}
@@ -149,12 +71,12 @@ func main() {
 	}
 
 	printScreen := handlers.NextFunc(func(item interface{}) {
-		f, ok := item.(MoveeFrame)
+		_, ok := item.(frame.Header)
 		if !ok {
 			log.Printf("Unable to cast into into MoveeFrame: %s", item)
 		}
 
-		f.print()
+		// frame.Print()
 	})
 
 	observable.
