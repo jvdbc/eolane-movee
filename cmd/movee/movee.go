@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -12,15 +13,53 @@ import (
 
 	"github.com/reactivex/rxgo/handlers"
 
-	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/observable"
 )
 
-func unravel(result interface{}, err error) interface{} {
+func unTuple(result interface{}, err error) interface{} {
 	if err != nil {
 		return err
 	}
 	return result
+}
+
+func onInputs(item interface{}) interface{} {
+	if str, ok := item.(string); ok {
+		return unTuple(hex.DecodeString(str))
+	}
+
+	return fmt.Errorf("Unable to cast into string: %#v of type: %T", item, item)
+}
+
+func onFrame(item interface{}) interface{} {
+	if frm, ok := item.([]byte); ok {
+		return unTuple(frame.Payload(frm).Parse())
+	}
+
+	return fmt.Errorf("Unable to cast into []byte: %#v of type: %T", item, item)
+}
+
+func printFrame(item interface{}) {
+	if frm, ok := item.(frame.MoveeFrame); ok {
+		fmt.Printf("%s \n", frm)
+		return
+	}
+
+	log.Printf("Unable to cast into moveeFrame: %#v of type: %T", item, item)
+}
+
+// SliceByte type
+type sliceByte struct {
+	value [][]byte
+	index int
+}
+
+// Next contract to rx.Iterator
+func (s sliceByte) Next() (interface{}, error) {
+	if s.index < len(s.value) {
+		return s.value[s.index], nil
+	}
+	return nil, fmt.Errorf("End of SliceByte: %#v", s)
 }
 
 func main() {
@@ -46,45 +85,38 @@ func main() {
 		sep = "AA"
 	}
 
-	inputs, err := iterable.New(strings.Split(args, sep))
+	// inputs, err := iterable.New(interface{}(args))
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	onInput := func(item interface{}) interface{} {
-		if str, ok := item.(string); ok {
-			return unravel(hex.DecodeString(str))
-		}
-
-		return fmt.Errorf("Unable to cast into string %s", item)
-	}
-
-	onBytes := func(item interface{}) interface{} {
+	var frames [][]byte
+	buildFrames := handlers.NextFunc(func(item interface{}) {
 		if data, ok := item.([]byte); ok {
-			payload := frame.Payload(data)
-
-			return unravel(payload.Parse())
+			b := bytes.Split(data, []byte(sep))
+			for _, r := range b {
+				frames = append(frames, r)
+			}
 		}
 
-		return fmt.Errorf("Unable to cast into []byte: %s", item)
-	}
-
-	printScreen := handlers.NextFunc(func(item interface{}) {
-		_, ok := item.(frame.Header)
-		if !ok {
-			log.Printf("Unable to cast into into MoveeFrame: %s", item)
-		}
-
-		// frame.Print()
+		log.Printf("Unable to cast into []byte %#v of type %T", item, item)
 	})
 
-	observable.
-		From(inputs).
-		Map(onInput).
-		Map(onBytes).
-		Subscribe(printScreen)
+	wait := observable.Just(args).Map(onInputs).Subscribe(buildFrames)
 
+	<-wait
+	// frameIte := sliceByte{value: frames}
+	// ite, err := iterable.New(frames)
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	wait = observable.Just(frames).Map(onFrame).Subscribe(buildFrames)
+	<-wait
+
+	// wait = observable.From(ite).Map()
 	// connectable.New()
 
 	// onError := handlers.ErrFunc(func(err error) {

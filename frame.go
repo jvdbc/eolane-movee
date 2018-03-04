@@ -45,6 +45,13 @@ type MoveeFrame interface {
 	GetHeader() *Header
 }
 
+func (m Header) String() string {
+	return fmt.Sprintf("BatteryLevel: %f, Temperature: %d, Type: %v",
+		m.BatteryLevel,
+		m.Temperature,
+		m.FrameType)
+}
+
 func parseHeader(payload []byte) (*Header, error) {
 	if len(payload) < 3 {
 		return &Header{}, fmt.Errorf("The payload must have at least 3 bytes: %x", payload)
