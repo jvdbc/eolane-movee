@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/hex"
 	"testing"
 )
 
@@ -35,9 +37,18 @@ import (
 // }
 
 func Test_truc(t *testing.T) {
-	data := []byte{0x01, 0xFF}
-
+	data, err := hex.DecodeString("01aa02")
+	errIf(t, err)
+	sep, err := hex.DecodeString("AA")
+	errIf(t, err)
+	r := bytes.Split(data, sep)
 	t.Logf("Test_Truc print: %s", "hum ...")
-	t.Logf("%x \n", data)
+	t.Logf("%#v \n", r)
 
+}
+
+func errIf(t *testing.T, err error) {
+	if err != nil {
+		t.Error(err)
+	}
 }

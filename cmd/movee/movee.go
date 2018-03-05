@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/jvdbc/eolane-movee"
 
@@ -48,18 +47,18 @@ func printFrame(item interface{}) {
 	log.Printf("Unable to cast into moveeFrame: %#v of type: %T", item, item)
 }
 
-// SliceByte type
-type sliceByte struct {
+// iteByte type
+type iteByte struct {
 	value [][]byte
 	index int
 }
 
 // Next contract to rx.Iterator
-func (s sliceByte) Next() (interface{}, error) {
+func (s iteByte) Next() (interface{}, error) {
 	if s.index < len(s.value) {
 		return s.value[s.index], nil
 	}
-	return nil, fmt.Errorf("End of SliceByte: %#v", s)
+	return nil, fmt.Errorf("End of IteByte: %#v", s)
 }
 
 func main() {
@@ -78,23 +77,12 @@ func main() {
 
 	args := os.Args[1]
 
-	var sep = "aa"
-
-	// Maybe upper
-	if !strings.Contains(args, sep) {
-		sep = "AA"
-	}
-
-	// inputs, err := iterable.New(interface{}(args))
-
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	var sep = []byte{0xaa}
 
 	var frames [][]byte
 	buildFrames := handlers.NextFunc(func(item interface{}) {
 		if data, ok := item.([]byte); ok {
-			b := bytes.Split(data, []byte(sep))
+			b := bytes.Split(data, sep)
 			for _, r := range b {
 				frames = append(frames, r)
 			}
@@ -104,45 +92,10 @@ func main() {
 	})
 
 	wait := observable.Just(args).Map(onInputs).Subscribe(buildFrames)
-
-	<-wait
-	// frameIte := sliceByte{value: frames}
-	// ite, err := iterable.New(frames)
-
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	wait = observable.Just(frames).Map(onFrame).Subscribe(buildFrames)
 	<-wait
 
-	// wait = observable.From(ite).Map()
-	// connectable.New()
-
-	// onError := handlers.ErrFunc(func(err error) {
-	// 	log.Printf("frame %d: %s is not valid: %s ", i, frame, err)
-	// })
-
-	// onHex := handlers.NextFunc(func(item interface{}) {
-	// 	data := item.([]byte)
-	// 	switch {
-
-	// 	}
-	// })
-
-	// popHex := func() interface{} {
-	// 	if data, err := hex.DecodeString(frame); err != nil {
-	// 		return err
-	// 	}
-	// 	return data
-	// }
-
-	// observer := observer.New(onFrame, onError)
-
-	// observable.Start(popHex).Subscribe()
-
-	// var data, err = hex.DecodeString(frame)
-
+	wait = observable.From(iteByte{value: frames}).Map(onFrame).Subscribe(buildFrames)
+	<-wait
 }
 
 func oldMain(frames []string) {

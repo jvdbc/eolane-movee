@@ -224,11 +224,11 @@ func parseRotation(payload []byte) (RotationFrame, error) {
 		return RotationFrame{}, err
 	}
 
-	if len(payload) != 4 {
-		return RotationFrame{}, fmt.Errorf("Rotation frame has a expected length of 4: %x", payload)
+	if len(payload) != 5 {
+		return RotationFrame{}, fmt.Errorf("Rotation frame has a expected length of 5: %#v", payload)
 	}
 
-	return RotationFrame{Header: header, numberOfTurns: int16(payload[3])}, nil
+	return RotationFrame{Header: header, numberOfTurns: int16(payload[4])}, nil
 }
 
 // VibeFrame type
@@ -301,12 +301,8 @@ func calculateTemperature(b byte) int8 {
 
 // Parse read a slice of data to get the movee frame
 func (p Payload) Parse() (MoveeFrame, error) {
-	if p == nil {
-		return nil, fmt.Errorf("The payload must not be nil")
-	}
-
 	if len(p) < 3 {
-		return nil, fmt.Errorf("The payload must have at least 3 bytes: %x", p)
+		return nil, fmt.Errorf("The payload must have at least 3 bytes: %#v", p)
 	}
 
 	switch FrameType(p[2]) {
