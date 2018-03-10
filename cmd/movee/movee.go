@@ -58,6 +58,21 @@ func (s *byteIterator) Next() (interface{}, error) {
 	return nil, fmt.Errorf("End of IteByte: %#v", s)
 }
 
+var frames [][]byte
+var sep = []byte{0xaa}
+
+func splitFrames(item interface{}) {
+	if data, ok := item.([]byte); ok {
+		b := bytes.Split(data, sep)
+		for _, r := range b {
+			frames = append(frames, r)
+		}
+		return
+	}
+
+	log.Printf("Unable to cast into []byte %#v of type %T", item, item)
+}
+
 func main() {
 
 	flag.Usage = func() {
@@ -74,25 +89,10 @@ func main() {
 
 	input := os.Args[1]
 
-	var sep = []byte{0xaa}
-
-	var frames [][]byte
-	splitFrames := handlers.NextFunc(func(item interface{}) {
-		data, ok := item.([]byte)
-		if !ok {
-			log.Printf("Unable to cast into []byte %#v of type %T", item, item)
-			return
-		}
-		b := bytes.Split(data, sep)
-		for _, r := range b {
-			frames = append(frames, r)
-		}
-	})
-
 	wait := observable.
 		Just(input).
 		Map(hexString).
-		Subscribe(splitFrames)
+		Subscribe(handlers.NextFunc(splitFrames))
 
 	<-wait
 
