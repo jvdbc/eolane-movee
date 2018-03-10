@@ -4,8 +4,15 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "go generate",
+            "type": "shell",
+            "command": "go generate ./...",
+            "group": "build"
+        },
+        {
             "label": "go install",
             "type": "shell",
+            "dependsOn": "go generate",
             "command": "go install ./...",
             "group": {
                 "kind": "build",
