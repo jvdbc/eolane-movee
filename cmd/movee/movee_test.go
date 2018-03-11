@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"testing"
 )
@@ -36,6 +37,12 @@ import (
 // 	}
 // }
 
+func errIf(t *testing.T, err error) {
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func Test_truc(t *testing.T) {
 	data, err := hex.DecodeString("01aa02")
 	errIf(t, err)
@@ -47,8 +54,12 @@ func Test_truc(t *testing.T) {
 
 }
 
-func errIf(t *testing.T, err error) {
-	if err != nil {
-		t.Error(err)
+func Test_again(t *testing.T) {
+	payload := []byte{0x00, 0x01, 0x02, 0x03, 0x00, 0xE2}
+	var nb int16
+	buf := bytes.NewReader(payload[4:])
+	if err := binary.Read(buf, binary.BigEndian, &nb); err != nil {
+		errIf(t, err)
 	}
+	t.Logf("nb: %d", nb)
 }

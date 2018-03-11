@@ -1,6 +1,10 @@
 package frame
 
-import "fmt"
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+)
 
 // MoveeType data type
 type MoveeType byte
@@ -137,34 +141,65 @@ func parseOrient(payload []byte) (OrientFrame, error) {
 // MotionFrame type
 type MotionFrame struct {
 	*Header
+	OnMove bool
 }
 
+// c11a2001aa or c11a2000aa
 func parseMotion(payload []byte) (MotionFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return MotionFrame{}, err
 	}
-	return MotionFrame{Header: header}, nil
+	if len(payload) != 4 {
+		return MotionFrame{}, fmt.Errorf("Motion frame has a expected length of 4: %#v", payload)
+	}
+
+	onMove := payload[3] == 0x00
+
+	return MotionFrame{Header: header, OnMove: onMove}, nil
+}
+
+func (m MotionFrame) String() string {
+	return fmt.Sprintf("%s, Motion: %t", m.Header, m.OnMove)
 }
 
 // ActivityFrame type
 type ActivityFrame struct {
 	*Header
+	OnMove   bool
+	Duration uint16
 }
 
+// c11a400000000300aa
 func parseActivity(payload []byte) (ActivityFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return ActivityFrame{}, err
 	}
-	return ActivityFrame{Header: header}, nil
+	if len(payload) != 8 {
+		return ActivityFrame{}, fmt.Errorf("Activity frame has a expected length of 8: %#v", payload)
+	}
+
+	onMove := payload[3] == 0x00
+
+	var duration uint16
+
+	if err = binary.Read(bytes.NewReader(payload[4:]), binary.BigEndian, &duration); err != nil {
+		return ActivityFrame{}, err
+	}
+
+	return ActivityFrame{Header: header, OnMove: onMove, Duration: duration}, nil
+}
+
+func (a ActivityFrame) String() string {
+	return fmt.Sprintf("%s, Motion: %t, Duration: %d", a.Header, a.OnMove, a.Duration)
 }
 
 // RotationFrame type
 // c11580000aaa
 type RotationFrame struct {
 	*Header
-	numberOfTurns int16
+	TurnsNumber int16
 }
 
 // Parse for rotationFrame
@@ -176,7 +211,18 @@ func parseRotation(payload []byte) (RotationFrame, error) {
 	if len(payload) != 5 {
 		return RotationFrame{}, fmt.Errorf("Rotation frame has a expected length of 5: %#v", payload)
 	}
-	return RotationFrame{Header: header, numberOfTurns: int16(payload[4])}, nil
+
+	var nb int16
+
+	if err = binary.Read(bytes.NewReader(payload[3:]), binary.BigEndian, &nb); err != nil {
+		return RotationFrame{}, err
+	}
+
+	return RotationFrame{Header: header, TurnsNumber: nb}, nil
+}
+
+func (r RotationFrame) String() string {
+	return fmt.Sprintf("%s, Tour: %d", r.Header, r.TurnsNumber)
 }
 
 // VibeFrame type

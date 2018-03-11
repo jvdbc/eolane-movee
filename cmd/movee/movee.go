@@ -8,6 +8,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/reactivex/rxgo/observer"
+
 	"github.com/jvdbc/eolane-movee"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
@@ -42,6 +44,10 @@ func printFrame(item interface{}) {
 	log.Printf("Unable to cast into moveeFrame: %#v of type: %T", item, item)
 }
 
+func printError(err error) {
+	log.Println(err)
+}
+
 // byteIterator type
 type byteIterator struct {
 	value [][]byte
@@ -64,8 +70,10 @@ var sep = []byte{0xaa}
 func splitFrames(item interface{}) {
 	if data, ok := item.([]byte); ok {
 		b := bytes.Split(data, sep)
-		for _, r := range b {
-			frames = append(frames, r)
+		for _, row := range b {
+			if len(row) > 0 {
+				frames = append(frames, row)
+			}
 		}
 		return
 	}
@@ -89,17 +97,25 @@ func main() {
 
 	input := os.Args[1]
 
+	oInput := observer.New(
+		handlers.NextFunc(splitFrames),
+		handlers.ErrFunc(printError))
+
 	wait := observable.
 		Just(input).
 		Map(hexString).
-		Subscribe(handlers.NextFunc(splitFrames))
+		Subscribe(oInput)
 
 	<-wait
+
+	oParse := observer.New(
+		handlers.NextFunc(printFrame),
+		handlers.ErrFunc(printError))
 
 	wait = observable.
 		From(&byteIterator{value: frames}).
 		Map(parse).
-		Subscribe(handlers.NextFunc(printFrame))
+		Subscribe(oParse)
 
 	<-wait
 }
