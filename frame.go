@@ -50,8 +50,70 @@ type Header struct {
 type MoveeFrame interface {
 }
 
+// AliveFrame type
+type AliveFrame struct {
+	*Header
+}
+
+// TemperatureFrame type
+type TemperatureFrame struct {
+	*Header
+	Temperatures []int8
+}
+
+// ShockFrame type
+type ShockFrame struct {
+	*Header
+}
+
+// TiltFrame type
+// c1150800000000aac115080000ffecaac115080064ffecaa
+type TiltFrame struct {
+	*Header
+}
+
+// OrientFrame type
+type OrientFrame struct {
+	*Header
+}
+
+// MotionFrame type
+type MotionFrame struct {
+	*Header
+	OnMove bool
+}
+
+// ActivityFrame type
+type ActivityFrame struct {
+	*Header
+	OnMove   bool
+	Duration uint32
+}
+
+// RotationFrame type
+// c11580000aaa
+type RotationFrame struct {
+	*Header
+	TurnsNumber int16
+}
+
+// VibeFrame type
+type VibeFrame struct {
+	*Header
+}
+
+// InformationFrame type
+type InformationFrame struct {
+	*Header
+}
+
+// ServiceFrame type
+type ServiceFrame struct {
+	*Header
+}
+
 func (m Header) String() string {
-	return fmt.Sprintf("BatteryLevel: %f, Temperature: %d, Type: %s",
+	return fmt.Sprintf("BatteryLevel: %.2fV, Temperature: %d°, Type: %s",
 		m.BatteryLevel,
 		m.Temperature,
 		m.FrameType)
@@ -72,11 +134,6 @@ func parseHeader(payload []byte) (*Header, error) {
 		FrameType:    MoveeType(payload[2])}, nil
 }
 
-// AliveFrame type
-type AliveFrame struct {
-	*Header
-}
-
 func parseAlive(payload []byte) (AliveFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
@@ -85,22 +142,24 @@ func parseAlive(payload []byte) (AliveFrame, error) {
 	return AliveFrame{Header: header}, nil
 }
 
-// TemperatureFrame type
-type TemperatureFrame struct {
-	*Header
-}
-
+// c11502151516181717171818181716aa
 func parseTemperature(payload []byte) (TemperatureFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return TemperatureFrame{}, err
 	}
-	return TemperatureFrame{Header: header}, nil
+
+	var temperatures []int8
+
+	for _, t := range payload[3:] {
+		temperatures = append(temperatures, int8(t))
+	}
+
+	return TemperatureFrame{Header: header, Temperatures: temperatures}, nil
 }
 
-// ShockFrame type
-type ShockFrame struct {
-	*Header
+func (t TemperatureFrame) String() string {
+	return fmt.Sprintf("%s, Temperatures: %v", t.Header, t.Temperatures)
 }
 
 func parseShock(payload []byte) (ShockFrame, error) {
@@ -111,12 +170,6 @@ func parseShock(payload []byte) (ShockFrame, error) {
 	return ShockFrame{Header: header}, nil
 }
 
-// TiltFrame type
-// c1150800000000aac115080000ffecaac115080064ffecaa
-type TiltFrame struct {
-	*Header
-}
-
 func parseTilt(payload []byte) (TiltFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
@@ -125,23 +178,12 @@ func parseTilt(payload []byte) (TiltFrame, error) {
 	return TiltFrame{Header: header}, nil
 }
 
-// OrientFrame type
-type OrientFrame struct {
-	*Header
-}
-
 func parseOrient(payload []byte) (OrientFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return OrientFrame{}, err
 	}
 	return OrientFrame{Header: header}, nil
-}
-
-// MotionFrame type
-type MotionFrame struct {
-	*Header
-	OnMove bool
 }
 
 // c11a2001aa or c11a2000aa
@@ -163,13 +205,6 @@ func (m MotionFrame) String() string {
 	return fmt.Sprintf("%s, Motion: %t", m.Header, m.OnMove)
 }
 
-// ActivityFrame type
-type ActivityFrame struct {
-	*Header
-	OnMove   bool
-	Duration uint16
-}
-
 // c11a400000000300aa
 func parseActivity(payload []byte) (ActivityFrame, error) {
 	header, err := parseHeader(payload)
@@ -182,7 +217,7 @@ func parseActivity(payload []byte) (ActivityFrame, error) {
 
 	onMove := payload[3] == 0x00
 
-	var duration uint16
+	var duration uint32
 
 	if err = binary.Read(bytes.NewReader(payload[4:]), binary.BigEndian, &duration); err != nil {
 		return ActivityFrame{}, err
@@ -192,14 +227,7 @@ func parseActivity(payload []byte) (ActivityFrame, error) {
 }
 
 func (a ActivityFrame) String() string {
-	return fmt.Sprintf("%s, Motion: %t, Duration: %d", a.Header, a.OnMove, a.Duration)
-}
-
-// RotationFrame type
-// c11580000aaa
-type RotationFrame struct {
-	*Header
-	TurnsNumber int16
+	return fmt.Sprintf("%s, Motion: %t, Duration: %dms", a.Header, a.OnMove, a.Duration)
 }
 
 // Parse for rotationFrame
@@ -225,11 +253,6 @@ func (r RotationFrame) String() string {
 	return fmt.Sprintf("%s, Tour: %d", r.Header, r.TurnsNumber)
 }
 
-// VibeFrame type
-type VibeFrame struct {
-	*Header
-}
-
 func parseVibe(payload []byte) (VibeFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
@@ -238,22 +261,12 @@ func parseVibe(payload []byte) (VibeFrame, error) {
 	return VibeFrame{Header: header}, nil
 }
 
-// InformationFrame type
-type InformationFrame struct {
-	*Header
-}
-
 func parseInformation(payload []byte) (InformationFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return InformationFrame{}, err
 	}
 	return InformationFrame{Header: header}, nil
-}
-
-// ServiceFrame type
-type ServiceFrame struct {
-	*Header
 }
 
 func parseService(payload []byte) (ServiceFrame, error) {

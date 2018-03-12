@@ -8,11 +8,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/reactivex/rxgo/observer"
-
 	"github.com/jvdbc/eolane-movee"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/observer"
 )
 
 func unTuple(result interface{}, err error) interface{} {
