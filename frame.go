@@ -355,6 +355,10 @@ func parseService(payload []byte) (ServiceFrame, error) {
 	return ServiceFrame{Header: header}, nil
 }
 
+func (s ServiceFrame) String() string {
+	return fmt.Sprintf("%s", s.Header)
+}
+
 // Parse read a slice of data to get the movee frame
 func (p Payload) Parse() (MoveeFrame, error) {
 	if len(p) < 3 {
