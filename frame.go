@@ -28,8 +28,8 @@ const (
 	Rotation MoveeType = 0x80
 	// Vibration frame
 	Vibration MoveeType = 0x86
-	// Information frame
-	Information MoveeType = 0xFE
+	// Version frame
+	Version MoveeType = 0xFE
 	// Service frame
 	Service MoveeType = 0xFF
 )
@@ -64,6 +64,9 @@ type TemperatureFrame struct {
 // ShockFrame type
 type ShockFrame struct {
 	*Header
+	Gx int16
+	Gy int16
+	Gz int16
 }
 
 // TiltFrame type
@@ -107,8 +110,8 @@ type VibeFrame struct {
 	*Header
 }
 
-// InformationFrame type
-type InformationFrame struct {
+// VersionFrame type
+type VersionFrame struct {
 	*Header
 }
 
@@ -147,6 +150,10 @@ func parseAlive(payload []byte) (AliveFrame, error) {
 	return AliveFrame{Header: header}, nil
 }
 
+func (a AliveFrame) String() string {
+	return fmt.Sprintf("%s", a.Header)
+}
+
 // c11502151516181717171818181716aa
 func parseTemperature(payload []byte) (TemperatureFrame, error) {
 	header, err := parseHeader(payload)
@@ -167,12 +174,35 @@ func (t TemperatureFrame) String() string {
 	return fmt.Sprintf("%s, Temperatures: %v", t.Header, t.Temperatures)
 }
 
+// c11a040c9fff970134aa
 func parseShock(payload []byte) (ShockFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return ShockFrame{}, err
 	}
-	return ShockFrame{Header: header}, nil
+	if len(payload) != 9 {
+		return ShockFrame{}, fmt.Errorf("Shock frame expect a payload length of 9, have: %#v", payload)
+	}
+
+	var gX int16
+	var gY int16
+	var gZ int16
+
+	if err = binary.Read(bytes.NewReader(payload[3:5]), binary.BigEndian, &gX); err != nil {
+		return ShockFrame{}, err
+	}
+	if err = binary.Read(bytes.NewReader(payload[5:7]), binary.BigEndian, &gY); err != nil {
+		return ShockFrame{}, err
+	}
+	if err = binary.Read(bytes.NewReader(payload[7:9]), binary.BigEndian, &gZ); err != nil {
+		return ShockFrame{}, err
+	}
+
+	return ShockFrame{Header: header, Gx: gX, Gy: gY, Gz: gZ}, nil
+}
+
+func (s ShockFrame) String() string {
+	return fmt.Sprintf("%s, Gx: %dmG, Gy: %dmG, Gz: %dmG", s.Header, s.Gx, s.Gy, s.Gz)
 }
 
 // c1150800000082aa or c115080064ffecaa
@@ -309,12 +339,12 @@ func parseVibe(payload []byte) (VibeFrame, error) {
 	return VibeFrame{Header: header}, nil
 }
 
-func parseInformation(payload []byte) (InformationFrame, error) {
+func parseVersion(payload []byte) (VersionFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
-		return InformationFrame{}, err
+		return VersionFrame{}, err
 	}
-	return InformationFrame{Header: header}, nil
+	return VersionFrame{Header: header}, nil
 }
 
 func parseService(payload []byte) (ServiceFrame, error) {
@@ -349,8 +379,8 @@ func (p Payload) Parse() (MoveeFrame, error) {
 		return parseRotation(p)
 	case Vibration:
 		return parseVibe(p)
-	case Information:
-		return parseInformation(p)
+	case Version:
+		return parseVersion(p)
 	case Service:
 		return parseService(p)
 	default:
