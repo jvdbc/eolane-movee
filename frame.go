@@ -70,11 +70,16 @@ type ShockFrame struct {
 // c1150800000000aac115080000ffecaac115080064ffecaa
 type TiltFrame struct {
 	*Header
+	PitchAngle int16
+	RollAngle  int16
 }
 
 // OrientFrame type
 type OrientFrame struct {
 	*Header
+	PitchAngle int16
+	RollAngle  int16
+	YawAngle   int16
 }
 
 // MotionFrame type
@@ -170,20 +175,63 @@ func parseShock(payload []byte) (ShockFrame, error) {
 	return ShockFrame{Header: header}, nil
 }
 
+// c1150800000082aa or c115080064ffecaa
 func parseTilt(payload []byte) (TiltFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return TiltFrame{}, err
 	}
-	return TiltFrame{Header: header}, nil
+	if len(payload) != 7 {
+		return TiltFrame{}, fmt.Errorf("Tilt frame expect a payload length of 7, have: %#v", payload)
+	}
+
+	var pitchAngle int16
+	var rollAngle int16
+
+	if err = binary.Read(bytes.NewReader(payload[3:5]), binary.BigEndian, &pitchAngle); err != nil {
+		return TiltFrame{}, err
+	}
+
+	if err = binary.Read(bytes.NewReader(payload[5:7]), binary.BigEndian, &rollAngle); err != nil {
+		return TiltFrame{}, err
+	}
+
+	return TiltFrame{Header: header, PitchAngle: (pitchAngle / 10), RollAngle: (rollAngle / 10)}, nil
 }
 
+func (t TiltFrame) String() string {
+	return fmt.Sprintf("%s, Pitch angle: %d°, Roll angle: %d°", t.Header, t.PitchAngle, t.RollAngle)
+}
+
+// c115100000fffeffe7aa
 func parseOrient(payload []byte) (OrientFrame, error) {
 	header, err := parseHeader(payload)
 	if err != nil {
 		return OrientFrame{}, err
 	}
-	return OrientFrame{Header: header}, nil
+	if len(payload) != 9 {
+		return OrientFrame{}, fmt.Errorf("Orient frame expect a payload length of 9, have: %#v", payload)
+	}
+
+	var pitchAngle int16
+	var rollAngle int16
+	var yawAngle int16
+
+	if err = binary.Read(bytes.NewReader(payload[3:5]), binary.BigEndian, &pitchAngle); err != nil {
+		return OrientFrame{}, err
+	}
+	if err = binary.Read(bytes.NewReader(payload[5:7]), binary.BigEndian, &rollAngle); err != nil {
+		return OrientFrame{}, err
+	}
+	if err = binary.Read(bytes.NewReader(payload[7:9]), binary.BigEndian, &yawAngle); err != nil {
+		return OrientFrame{}, err
+	}
+
+	return OrientFrame{Header: header, PitchAngle: pitchAngle, RollAngle: rollAngle, YawAngle: yawAngle}, nil
+}
+
+func (o OrientFrame) String() string {
+	return fmt.Sprintf("%s, Pitch angle: %d°, Roll angle: %d°, Yaw angle: %d°", o.Header, o.PitchAngle, o.RollAngle, o.YawAngle)
 }
 
 // c11a2001aa or c11a2000aa
@@ -193,7 +241,7 @@ func parseMotion(payload []byte) (MotionFrame, error) {
 		return MotionFrame{}, err
 	}
 	if len(payload) != 4 {
-		return MotionFrame{}, fmt.Errorf("Motion frame has a expected length of 4: %#v", payload)
+		return MotionFrame{}, fmt.Errorf("Motion frame expect a paylod length of 4, have: %#v", payload)
 	}
 
 	onMove := payload[3] == 0x00
@@ -212,7 +260,7 @@ func parseActivity(payload []byte) (ActivityFrame, error) {
 		return ActivityFrame{}, err
 	}
 	if len(payload) != 8 {
-		return ActivityFrame{}, fmt.Errorf("Activity frame has a expected length of 8: %#v", payload)
+		return ActivityFrame{}, fmt.Errorf("Activity frame expect a paylod length of 8, have: %#v", payload)
 	}
 
 	onMove := payload[3] == 0x00
@@ -237,7 +285,7 @@ func parseRotation(payload []byte) (RotationFrame, error) {
 		return RotationFrame{}, err
 	}
 	if len(payload) != 5 {
-		return RotationFrame{}, fmt.Errorf("Rotation frame has a expected length of 5: %#v", payload)
+		return RotationFrame{}, fmt.Errorf("Rotation frame expect a paylod length of 5, have: %#v", payload)
 	}
 
 	var nb int16
