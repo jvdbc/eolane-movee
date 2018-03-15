@@ -36,6 +36,31 @@ const (
 
 //go:generate stringer -type=MoveeType
 
+// Axis type for vibe
+type Axis byte
+
+const (
+	// X axis
+	X Axis = iota
+	// Y axis
+	Y
+	// Z axis
+	Z
+)
+
+//go:generate stringer -type=Axis
+
+// Vibe type
+type Vibe struct {
+	Axis      Axis
+	Amplitude uint16
+	Frequency int8
+}
+
+func (v Vibe) String() string {
+	return fmt.Sprintf("Axis: %d", v.Axis)
+}
+
 // Payload type alias on slice of bytes
 type Payload []byte
 
@@ -108,6 +133,7 @@ type RotationFrame struct {
 // VibeFrame type
 type VibeFrame struct {
 	*Header
+	Vibes []Vibe
 }
 
 // VersionFrame type
@@ -336,6 +362,11 @@ func parseVibe(payload []byte) (VibeFrame, error) {
 	if err != nil {
 		return VibeFrame{}, err
 	}
+
+	// for _, v := range payload {
+
+	// }
+
 	return VibeFrame{Header: header}, nil
 }
 
